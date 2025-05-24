@@ -10,18 +10,5 @@ export function setUser(user) {
 }
 
 export function getUser(token) {
-  if(!token){
-    return res.status(401).json({
-      success : false,
-      message : "Unauthorized"
-    })
-  }
-  try {
     return jwt.verify(token , process.env.JWT_SECRET)
-  } catch (error) {
-    return res.status(401).json({
-      success : false,
-      message : "Session expired. Please login again."
-    })
-  }
 }

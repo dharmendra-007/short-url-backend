@@ -1,5 +1,5 @@
 import User from '../models/user.model.js'
-import { setUser } from '../services/auth.service.js'
+import { getUser, setUser } from '../services/auth.service.js'
 import bcrypt from 'bcrypt'
 
 export async function handleUserSignUp(req, res) {
@@ -42,7 +42,7 @@ export async function handleUserSignUp(req, res) {
       })
     }
   } catch (error) {
-    console.error("signup error : " ,error)
+    console.error("signup error : ", error)
     res.status(500).json({
       success: false,
       message: 'something went wrong. please try again later!'
@@ -53,24 +53,24 @@ export async function handleUserSignUp(req, res) {
 export async function handleUserLogin(req, res) {
   try {
     // extract user info
-    const { email, password , rememberMe } = req.body
+    const { email, password, rememberMe } = req.body
 
     //find if user exist
     const user = await User.findOne({ email })
 
-    if (!user){
+    if (!user) {
       return res.status(400).json({
-        success : false,
-        message : "user does not exist. register to continue!"
+        success: false,
+        message: "user does not exist. register to continue!"
       })
     }
 
-    const isPasswordMatch = await bcrypt.compare(password , user.password)
-    
-    if (!isPasswordMatch){
+    const isPasswordMatch = await bcrypt.compare(password, user.password)
+
+    if (!isPasswordMatch) {
       return res.status(400).json({
-        success : false,
-        message : "incorrect password!"
+        success: false,
+        message: "incorrect password!"
       })
     }
 
@@ -86,18 +86,18 @@ export async function handleUserLogin(req, res) {
       cookieOptions.maxAge = 10 * 365 * 24 * 60 * 60 * 1000;
     }
 
-    res.cookie('uid', token , cookieOptions)
+    res.cookie('uid', token, cookieOptions)
 
     user.password = undefined
     return res.status(200).json({
-      success : true,
-      message : 'login successfull!',
+      success: true,
+      message: 'login successfull!',
       user,
       token
     })
 
   } catch (error) {
-    console.error("login error : " ,error)
+    console.error("login error : ", error)
     res.status(500).json({
       success: false,
       message: 'something went wrong. please try again later!'
@@ -105,3 +105,67 @@ export async function handleUserLogin(req, res) {
   }
 }
 
+
+export async function getCurrentUser(req, res) {
+  try {
+    const token = req.cookies?.uid
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      })
+    }
+
+    const user = getUser(token)
+
+    if(!user) {
+      return res.status(401).json({
+        success : false,
+        message : "Session expired. Please login again."
+      })
+    }
+    return res.status(200).json({
+      success: true,
+      user
+    })
+
+  } catch (error) {
+    console.error("getCurrentUser error : ", error)
+    return res.status(500).json({
+      success: false,
+      message: "something went wrong. please try again!"
+    })
+  }
+}
+
+export async function handleLogout(req , res) {
+  try{
+    const token = req.cookies?.uid;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "No active session found.",
+      });
+    }
+
+    res.clearCookie("uid", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict",
+    });
+
+    res.status(200).json({
+      success : true,
+      message : "Logged out successfully!"
+    })
+
+  } catch(error) {
+    console.error("Logout error : ",error)
+    return res.status(500).json({
+      success : false,
+      message : "something went wrong. please try again!"
+    })
+  }
+}
