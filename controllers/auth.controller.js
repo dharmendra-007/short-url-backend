@@ -153,8 +153,9 @@ export async function handleLogout(req , res) {
 
     res.clearCookie("uid", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Strict",
+      secure: true,
+      sameSite: "None",
+      path: "/",
     });
 
     res.status(200).json({
