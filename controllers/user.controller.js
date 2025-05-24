@@ -86,7 +86,7 @@ export async function handleUserLogin(req, res) {
       cookieOptions.maxAge = 10 * 365 * 24 * 60 * 60 * 1000;
     }
 
-    res.cookie('uid', token)
+    res.cookie('uid', token , cookieOptions)
 
     user.password = undefined
     return res.status(200).json({
