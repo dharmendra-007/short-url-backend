@@ -25,7 +25,7 @@ app.use(
 app.use("/api/v1/url", urlRoute)
 app.use("/api/v1/auth", authRoute)
 
-app.use("/:id", handleRedirect)
+app.use("/:shortId", handleRedirect)
 
 const PORT = process.env.PORT
 
