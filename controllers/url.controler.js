@@ -11,7 +11,7 @@ export async function handleGenerateNewShortURL(req, res) {
 
     const shortID = nanoid(8)
     const newUrl = await URL.create({
-      shortId: shortID,
+      shortId: shortID.toLowerCase(),
       redirectUrl: url,
       visitHistory: [],
       createdBy: req.userInfo?._id
@@ -19,7 +19,7 @@ export async function handleGenerateNewShortURL(req, res) {
   
     return res.status(201).json({
       success : true,
-      id: shortID
+      id: newUrl.shortId
     })
 
   } catch (error) {
