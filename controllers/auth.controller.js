@@ -85,8 +85,6 @@ export async function handleUserLogin(req, res) {
 
     if (rememberMe) {
       cookieOptions.maxAge = 10 * 365 * 24 * 60 * 60 * 1000;
-    } else {
-      cookieOptions.maxAge = 24 * 60 * 60 * 1000;
     }
 
     res.cookie('uid', token, cookieOptions)
