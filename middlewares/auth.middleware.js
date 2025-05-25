@@ -1,16 +1,23 @@
 import { getUser } from "../services/auth.service.js"
 
 export async function restrictToLogedinUserOnly(req , res , next) {
-  const userUid = req.cookies?.uid
-
-  if (!userUid){
-    return res.status(401).json({
+  try {
+    const userUid = req.cookies?.userT
+  
+    if (!userUid){
+      return res.status(401).json({
+        success : false,
+        message : "access denied. no token provided."
+      })
+    }
+  
+    const user = getUser(userUid)
+    req.userInfo = user
+    next() 
+  } catch (error) {
+    res.status(500).json({
       success : false,
-      message : "access denied. no token provided."
+      message : "something went wrong. please try again!"
     })
   }
-
-  const user = getUser(userUid)
-  req.userInfo = user
-  next() 
 }

@@ -76,18 +76,11 @@ export async function handleUserLogin(req, res) {
 
     const token = setUser(user)
 
-    const cookieOptions = {
+    res.cookie("userT", token, {
       httpOnly: true,
-      secure: true,
-      sameSite: "None",
-      path: "/",
-    };
-
-    if (rememberMe) {
-      cookieOptions.maxAge = 10 * 365 * 24 * 60 * 60 * 1000;
-    }
-
-    res.cookie('uid', token, cookieOptions)
+      secure: process.env.NODE_ENV == 'PROD',
+      maxAge : rememberMe ? 10 * 365 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
+    })
 
     user.password = undefined
     return res.status(200).json({
@@ -109,7 +102,7 @@ export async function handleUserLogin(req, res) {
 
 export async function getCurrentUser(req, res) {
   try {
-    const token = req.cookies?.uid
+    const token = req.cookies?.userT
 
     if (!token) {
       return res.status(401).json({
@@ -142,7 +135,7 @@ export async function getCurrentUser(req, res) {
 
 export async function handleLogout(req , res) {
   try{
-    const token = req.cookies?.uid;
+    const token = req.cookies?.userT;
 
     if (!token) {
       return res.status(400).json({
@@ -151,11 +144,9 @@ export async function handleLogout(req , res) {
       });
     }
 
-    res.clearCookie("uid", {
+    res.clearCookie("userT", {
       httpOnly: true,
-      secure: true,
-      sameSite: "None",
-      path: "/",
+      secure: process.env.NODE_ENV == 'PROD',
     });
 
     res.status(200).json({

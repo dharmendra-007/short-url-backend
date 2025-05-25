@@ -6,7 +6,7 @@ export function setUser(user) {
     email: user.email,
     name : user.name
   }
-  return jwt.sign(payload , process.env.JWT_SECRET)
+  return jwt.sign(payload , process.env.JWT_SECRET , { expiresIn: "1d" })
 }
 
 export function getUser(token) {

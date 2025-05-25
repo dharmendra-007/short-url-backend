@@ -1,5 +1,5 @@
 import express from 'express';
-import {handleUserSignUp , handleUserLogin, getCurrentUser, handleLogout} from '../controllers/auth.controller.js';
+import {handleUserSignUp , handleUserLogin, getCurrentUser, handleLogout} from '../controllers/user.controller.js';
 
 const router = express.Router();
 
