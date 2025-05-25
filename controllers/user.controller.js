@@ -79,6 +79,7 @@ export async function handleUserLogin(req, res) {
     res.cookie("userT", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV == 'PROD',
+      sameSite: process.env.NODE_ENV === 'PROD' ? 'None' : 'Lax',
       maxAge : rememberMe ? 10 * 365 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
     })
 
@@ -146,6 +147,7 @@ export async function handleLogout(req , res) {
 
     res.clearCookie("userT", {
       httpOnly: true,
+      sameSite: process.env.NODE_ENV === 'PROD' ? 'None' : 'Lax',
       secure: process.env.NODE_ENV == 'PROD',
     });
 
