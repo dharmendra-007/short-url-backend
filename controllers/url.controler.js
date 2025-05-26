@@ -46,7 +46,9 @@ export async function handleRedirect(req, res) {
   try {
     const shortId = req.params.shortId
     const entry = await URL.findOneAndUpdate(
-      { shortId },
+      { shortId , 
+        isActive : true
+      },
       {
         $push: {
           visitHistory: {
@@ -58,7 +60,7 @@ export async function handleRedirect(req, res) {
     )
 
     if (!entry) {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: "short url does not exist!"
       })
@@ -426,7 +428,7 @@ export async function handleGetStats(req, res) {
     const calcChange = (current, previous) =>
       previous === 0 ? (current > 0 ? 100 : 0) : (((current - previous) / previous) * 100).toFixed(2);
 
-    const activeLinks = await URL.countDocuments({ createdBy: user._id, isactive: true })
+    const activeLinks = await URL.countDocuments({ createdBy: user._id, isActive: true })
 
     res.status(200).json({
       success: true,
@@ -475,6 +477,33 @@ export async function handleDeleteUrl(req , res) {
     res.status(500).json({
       success: false,
       message: "something went wrong. please try again!"
+    })
+  }
+}
+
+export async function handleChangeStatus(req , res) {
+  try {
+    const id = req.params.id
+    const url = await URL.findById(id)
+
+    if(!url){
+      res.status(400).json({
+        success : false,
+        message : "url does not exist"
+      })
+    }
+
+    url.isActive = !url.isActive
+    await url.save()
+
+    res.status(200).json({
+      success : true,
+      message : "url status chnaged successfully"
+    })
+  } catch (error) {
+    res.status(500).json({
+      success : false,
+      message : "something went wrong"
     })
   }
 }

@@ -18,14 +18,14 @@ app.use(
   cors({
     origin : ["http://localhost:3000", "https://shorturl-frontend-lac.vercel.app"],
     credentials : true,
-    methods : ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    methods : ["GET", "POST", "PUT", "DELETE", "OPTIONS" , "PATCH"]
   })
 )
 
 app.use("/api/v1/url", urlRoute)
 app.use("/api/v1/user", userRoute)
 
-app.use("/:shortId", handleRedirect)
+app.get("/:shortId", handleRedirect)
 
 const PORT = process.env.PORT
 
