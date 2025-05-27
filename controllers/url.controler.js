@@ -31,7 +31,7 @@ export async function handleGenerateNewShortURL(req, res) {
     return res.status(201).json({
       success: true,
       id: newUrl.shortId,
-      url
+      newUrl
     })
 
   } catch (error) {
