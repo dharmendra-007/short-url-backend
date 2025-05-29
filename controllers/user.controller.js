@@ -77,9 +77,9 @@ export async function handleUserLogin(req, res) {
     const token = setUser(user)
 
     res.cookie("userT", token, {
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      // sameSite : "None",
+      sameSite : "None",
       maxAge : rememberMe ? 10 * 365 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
     })
 
@@ -146,9 +146,9 @@ export async function handleLogout(req , res) {
     }
 
     res.clearCookie("userT", {
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      // sameSite : "None",
+      sameSite : "None",
     });
 
     res.status(200).json({
