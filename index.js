@@ -11,6 +11,7 @@ const app = express()
 
 await connectMongoDB()
 
+app.set('trust proxy', true)
 // middleware
 app.use(express.json())
 app.use(cookieParser())

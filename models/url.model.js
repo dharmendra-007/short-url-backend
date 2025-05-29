@@ -12,7 +12,12 @@ const urlSchema = new mongoose.Schema({
     required: true,
     trim : true
   },
-  visitHistory: [{ timestamp: { type: Number } }],
+  visitHistory: [{ 
+    timestamp: { type: Number },
+    ip : { type : String},
+    deviceType : {type : String},
+    source : {type : String} 
+  }],
   isActive : {
     type : Boolean,
     default : true
