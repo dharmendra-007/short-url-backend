@@ -9,6 +9,13 @@
   "routes": [
     {
       "src": "/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://shorturl-frontend-lac.vercel.app",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Expose-Headers": "Set-Cookie"
+      },
       "dest": "index.js"
     }
   ]
