@@ -358,35 +358,42 @@ export async function handleGetAnalytics(req, res) {
     const lastPeriod = new Date(currentPeriod)
     lastPeriod.setDate(lastPeriod.getDate() - parseInt(period))
 
-    let clicksCurrentPeriod = 0
+    let clicksCurrentPeriod = 0;
     urls.forEach((url) => {
-      if (url.createdAt >= currentPeriod) {
-        clicksCurrentPeriod += url.visitHistory.length
-      }
-    })
+      // Count only visits in visitHistory whose timestamp >= currentPeriod
+      const clicksInCurrent = url.visitHistory.filter(v => v.timestamp >= currentPeriod.getTime());
+      clicksCurrentPeriod += clicksInCurrent.length;
+    });
 
-    let clicksLastPeriod = 0
+    let clicksLastPeriod = 0;
     urls.forEach((url) => {
-      if (url.createdAt >= lastPeriod && url.createdAt < currentPeriod) {
-        clicksLastPeriod += url.visitHistory.length
-      }
-    })
+      // Count visits where timestamp >= lastPeriod AND < currentPeriod
+      const clicksInLast = url.visitHistory.filter(v =>
+        v.timestamp >= lastPeriod.getTime() && v.timestamp < currentPeriod.getTime()
+      );
+      clicksLastPeriod += clicksInLast.length;
+    });
 
     const allIps = urls.flatMap(url => url.visitHistory.map(v => v.ip))
     const uniqueIps = new Set(allIps)
     const uniqueVisitors = uniqueIps.size
 
-    const currentIps = urls
-      .filter(url => url.createdAt >= currentPeriod)
-      .flatMap(url => url.visitHistory.map(v => v.ip))
-    const currentUniqueIps = new Set(currentIps)
-    const currentUniqueVisitors = currentUniqueIps.size
+    const currentIps = urls.flatMap(url =>
+      url.visitHistory
+        .filter(v => v.timestamp >= currentPeriod.getTime())
+        .map(v => v.ip)
+    );
+    const currentUniqueIps = new Set(currentIps);
+    const currentUniqueVisitors = currentUniqueIps.size;
 
-    const lastIps = urls
-      .filter(url => url.createdAt >= lastPeriod && url.createdAt < currentPeriod)
-      .flatMap(url => url.visitHistory.map(v => v.ip))
-    const lastUniqueIps = new Set(lastIps)
-    const lastUniqueVisitors = lastUniqueIps.size
+    // Get all IPs with visit timestamp >= lastPeriod and < currentPeriod
+    const lastIps = urls.flatMap(url =>
+      url.visitHistory
+        .filter(v => v.timestamp >= lastPeriod.getTime() && v.timestamp < currentPeriod.getTime())
+        .map(v => v.ip)
+    );
+    const lastUniqueIps = new Set(lastIps);
+    const lastUniqueVisitors = lastUniqueIps.size;
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -394,7 +401,10 @@ export async function handleGetAnalytics(req, res) {
     const yesterdayStart = new Date(todayStart.getTime() - oneDay);
 
     const todaysClicks = urls.reduce((acc, link) => {
-      return acc + link.visitHistory.filter(v => v.timestamp >= todayStart.getTime()).length;
+      const todayClicks = link.visitHistory.filter(v => {
+        return v.timestamp >= todayStart.getTime(); // Ensure timestamp is in milliseconds
+      }).length;
+      return acc + todayClicks;
     }, 0);
 
     const yesterdaysClicks = urls.reduce((acc, link) => {
@@ -408,25 +418,33 @@ export async function handleGetAnalytics(req, res) {
     const lastConversionRate = clicksLastPeriod == 0 ? 0 : ((lastUniqueVisitors / clicksLastPeriod) * 100).toFixed(2)
 
     const topFiveUrls = await URL.aggregate([
+      { $match: { createdBy: userId } },
+
+      { $unwind: "$visitHistory" },
+
       {
         $match: {
-          createdBy: userId,
-          createdAt: { $gte: currentPeriod }
+          $expr: {
+            $gte: [
+              { $toDate: "$visitHistory.timestamp" },
+              currentPeriod
+            ]
+          }
         }
       },
+
       {
-        $addFields: {
-          clicks: { $size: "$visitHistory" },
-        },
+        $group: {
+          _id: "$_id",
+          shortId: { $first: "$shortId" },
+          redirectUrl: { $first: "$redirectUrl" },
+          clicks: { $sum: 1 }
+        }
       },
-      {
-        $sort: {
-          clicks: -1,
-        },
-      },
-      {
-        $limit: 5,
-      },
+
+      { $sort: { clicks: -1 } },
+
+      { $limit: 5 }
     ]);
 
     const topFiveUrlsWithPercentage = topFiveUrls.map((url) => ({
@@ -435,13 +453,18 @@ export async function handleGetAnalytics(req, res) {
     }))
 
     const DeviceInfoWithPercentage = await URL.aggregate([
+      { $unwind: "$visitHistory" },
       {
         $match: {
           createdBy: userId,
-          createdAt: { $gte: currentPeriod }
+          $expr: {
+            $gte: [
+              { $toDate: "$visitHistory.timestamp" }, // convert number to Date
+              currentPeriod                          // JS Date object (already in local time)
+            ]
+          }
         }
       },
-      { $unwind: "$visitHistory" },
       {
         $group: {
           _id: "$visitHistory.deviceType",
@@ -485,14 +508,19 @@ export async function handleGetAnalytics(req, res) {
 
 
     const SourceInfoWithPercentage = await URL.aggregate([
+      { $unwind: "$visitHistory" },
       {
         $match: {
           createdBy: userId,
-          createdAt: { $gte: currentPeriod }
+          "visitHistory.source": { $exists: true, $ne: null },
+          $expr: {
+            $gte: [
+              { $toDate: "$visitHistory.timestamp" },
+              currentPeriod
+            ]
+          }
         }
       },
-      { $unwind: "$visitHistory" },
-      { $match: { "visitHistory.source": { $exists: true, $ne: null } } },
       {
         $group: {
           _id: "$visitHistory.source",
@@ -517,12 +545,13 @@ export async function handleGetAnalytics(req, res) {
                 source: "$$item.source",
                 count: "$$item.count",
                 percentage: {
-                  $round: [{
-                    $multiply: [
-                      { $divide: ["$$item.count", "$total"] },
-                      100
-                    ]
-                  },
+                  $round: [
+                    {
+                      $multiply: [
+                        { $divide: ["$$item.count", "$total"] },
+                        100
+                      ]
+                    },
                     2
                   ]
                 }
@@ -530,15 +559,15 @@ export async function handleGetAnalytics(req, res) {
             }
           }
         }
-
       }
     ]);
+
 
     const clickData = await URL.aggregate([
       {
         $match: {
           createdBy: userId,
-          createdAt: { $gte: currentPeriod }
+          // createdAt: { $gte: currentPeriod }
         }
       },
       { $unwind: "$visitHistory" },
@@ -569,6 +598,57 @@ export async function handleGetAnalytics(req, res) {
       clicks: clickMap.get(date) || 0
     }));
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+
+    const clickDataToday = await URL.aggregate([
+      {
+        $match: { createdBy: userId }
+      },
+      { $unwind: "$visitHistory" },
+      {
+        $match: {
+          $expr: {
+            $gte: [
+              { $toDate: "$visitHistory.timestamp" },
+              today
+            ]
+          }
+        }
+      },
+      {
+        $addFields: {
+          visitHour: {
+            $dateToString: {
+              format: "%H:00", // hour format: 00:00, 01:00, ...
+              date: { $toDate: "$visitHistory.timestamp" },
+              timezone: "Asia/Kolkata"
+            }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$visitHour",
+          clicks: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Optional JS post-processing for 24-hour format
+    const allHours = Array.from({ length: 24 }, (_, i) =>
+      `${i.toString().padStart(2, '0')}:00`
+    );
+
+    const clickMapToday = new Map(clickDataToday.map(item => [item._id, item.clicks]));
+
+    const hourlyClicksData = allHours.map(hour => ({
+      hour,
+      clicks: clickMapToday.get(hour) || 0
+    }));
+
+
     const calcChange = (current, previous) =>
       previous === 0 ? (current > 0 ? 100 : 0) : (((current - previous) / previous) * 100).toFixed(2);
 
@@ -589,7 +669,8 @@ export async function handleGetAnalytics(req, res) {
         topFiveUrlsWithPercentage,
         DeviceInfoWithPercentage,
         SourceInfoWithPercentage,
-        dailyClicksData
+        dailyClicksData,
+        hourlyClicksData
       }
     });
   } catch (error) {
