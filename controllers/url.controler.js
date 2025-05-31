@@ -9,6 +9,8 @@ import { generateDateRange } from '../helper/generateDateRange.js';
 export async function handleGenerateNewShortURL(req, res) {
   try {
     const { url } = req.body
+// sourcery skip: use-braces
+// sourcery skip: use-braces
     if (!url) return res.status(400).json({
       success: false,
       message: "url is required"
@@ -307,6 +309,7 @@ export async function handleChangeStatus(req, res) {
 
 export async function handleGetUrlAnalytics(req, res) {
   try {
+// sourcery skip: use-object-destructuring
     const shortId = req.params.shortId
     const result = await URL.findOne({ shortId })
 
