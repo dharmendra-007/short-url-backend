@@ -9,8 +9,8 @@ import { generateDateRange } from '../helper/generateDateRange.js';
 export async function handleGenerateNewShortURL(req, res) {
   try {
     const { url } = req.body
-// sourcery skip: use-braces
-// sourcery skip: use-braces
+    // sourcery skip: use-braces
+    // sourcery skip: use-braces
     if (!url) return res.status(400).json({
       success: false,
       message: "url is required"
@@ -188,6 +188,9 @@ export async function handleGetStats(req, res) {
 
     const topFiveUrls = await URL.aggregate([
       {
+        $match: { createdBy: new mongoose.Types.ObjectId(String(user._id)) }
+      },
+      {
         $addFields: {
           clicks: { $size: "$visitHistory" },
         },
@@ -309,7 +312,7 @@ export async function handleChangeStatus(req, res) {
 
 export async function handleGetUrlAnalytics(req, res) {
   try {
-// sourcery skip: use-object-destructuring
+    // sourcery skip: use-object-destructuring
     const shortId = req.params.shortId
     const result = await URL.findOne({ shortId })
 
@@ -421,10 +424,10 @@ export async function handleGetAnalytics(req, res) {
     const lastConversionRate = clicksLastPeriod == 0 ? 0 : ((lastUniqueVisitors / clicksLastPeriod) * 100).toFixed(2)
 
     const topFiveUrls = await URL.aggregate([
-      { $match: { createdBy: userId } },
-
+      {
+        $match: { createdBy: userId }
+      },
       { $unwind: "$visitHistory" },
-
       {
         $match: {
           $expr: {
