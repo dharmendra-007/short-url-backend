@@ -7,23 +7,23 @@ import { handleGenerateNewShortURL,
         handleDeleteUrl,
         handleChangeStatus,
 } from '../controllers/url.controler.js'
-import { restrictToLogedinUserOnly } from '../middlewares/auth.middleware.js';
+import { restrictToLogedinUserOnly, restrictToVerifiedUser } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
 //post routes
-router.post("/", handleGenerateNewShortURL)
+router.post("/", restrictToVerifiedUser, handleGenerateNewShortURL)
 
 //get routes
-router.get('/getuserurl' ,restrictToLogedinUserOnly, handleGetUserUrl)
-router.get("/stats" , restrictToLogedinUserOnly , handleGetStats )
-router.get("/analytics" , restrictToLogedinUserOnly , handleGetAnalytics )
-router.get("/analytics/:shortId" , restrictToLogedinUserOnly , handleGetUrlAnalytics )
+router.get('/getuserurl' ,restrictToVerifiedUser, handleGetUserUrl)
+router.get("/stats" , restrictToVerifiedUser , handleGetStats )
+router.get("/analytics" , restrictToVerifiedUser , handleGetAnalytics )
+router.get("/analytics/:shortId" , restrictToVerifiedUser , handleGetUrlAnalytics )
 
 //delete routes
-router.delete("/deleteurl/:id" , restrictToLogedinUserOnly , handleDeleteUrl)
+router.delete("/deleteurl/:id" , restrictToVerifiedUser , handleDeleteUrl)
 
 //patch routes
-router.patch("/changestatus/:id", restrictToLogedinUserOnly , handleChangeStatus)
+router.patch("/changestatus/:id", restrictToVerifiedUser , handleChangeStatus)
 
 export default router

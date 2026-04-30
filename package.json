@@ -21,6 +21,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.4",
     "nanoid": "^5.0.9",
+    "nodemailer": "^6.10.1",
+    "qrcode": "^1.5.4",
     "ua-parser-js": "^2.0.3",
     "uuid": "^11.0.4"
   },

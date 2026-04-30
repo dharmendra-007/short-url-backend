@@ -4,8 +4,10 @@ import { connectMongoDB } from './db/db.config.js'
 
 import urlRoute from './routes/url.route.js'
 import userRoute from './routes/user.route.js'
+import cronRoute from './routes/cron.route.js'
 import cors from 'cors'
 import { handleRedirect } from './controllers/url.controler.js'
+import { rateLimit50PerMinute } from './middlewares/rateLimit.middleware.js'
 
 const app = express()
 
@@ -15,9 +17,14 @@ app.set('trust proxy', true)
 // middleware
 app.use(express.json())
 app.use(cookieParser())
+app.use(rateLimit50PerMinute)
 app.use(
   cors({
-    origin : ["http://localhost:3000", "https://shorturl-frontend-lac.vercel.app" , "https://shorturl.dharmendra.space"],
+    origin : [
+      process.env.FRONTEND_URL || "http://localhost:3000",
+      "https://shorturl-frontend-lac.vercel.app",
+      "https://shorturl.dharmendra.space"
+    ],
     credentials : true,
     methods : ["GET", "POST", "PUT", "DELETE", "OPTIONS" , "PATCH"]
   })
@@ -25,6 +32,7 @@ app.use(
 
 app.use("/api/v1/url", urlRoute)
 app.use("/api/v1/user", userRoute)
+app.use("/api/v1/cron", cronRoute)
 
 app.get("/:shortId", handleRedirect)
 

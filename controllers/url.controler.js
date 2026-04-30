@@ -5,6 +5,14 @@ import { getSource } from '../helper/getSource.js';
 import { UAParser } from 'ua-parser-js';
 import mongoose from 'mongoose';
 import { generateDateRange } from '../helper/generateDateRange.js';
+import QRCode from 'qrcode';
+
+const INDIA_TIME_ZONE = "Asia/Kolkata";
+
+function formatShortUrl(shortId) {
+  const baseUrl = process.env.PUBLIC_SHORT_URL || process.env.FRONTEND_URL || process.env.SHORT_URL_BASE || "http://localhost:3000"
+  return `${baseUrl.replace(/\/$/, "")}/${shortId}`
+}
 
 export async function handleGenerateNewShortURL(req, res) {
   try {
@@ -27,16 +35,24 @@ export async function handleGenerateNewShortURL(req, res) {
     }
 
     const shortID = nanoid(8)
+    const shortUrl = formatShortUrl(shortID.toLowerCase())
+    const qrCodeDataUrl = await QRCode.toDataURL(shortUrl, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 256,
+    })
     const newUrl = await URL.create({
       shortId: shortID.toLowerCase(),
       redirectUrl: url,
       visitHistory: [],
-      createdBy: userId
+      createdBy: userId,
+      qrCodeDataUrl,
     })
 
     return res.status(201).json({
       success: true,
       id: newUrl.shortId,
+      qrCodeDataUrl,
       newUrl
     })
 
@@ -219,6 +235,14 @@ export async function handleGetStats(req, res) {
       return acc + weeklyClicks;
     }, 0);
 
+    const clicksThisWeek = userLinks.reduce((acc, link) => {
+      const weeklyClicks = link.visitHistory.filter(v => {
+        const ts = new Date(v.timestamp);
+        return ts >= sevenDaysAgo && ts <= now;
+      }).length;
+      return acc + weeklyClicks;
+    }, 0);
+
     const todaysClicks = userLinks.reduce((acc, link) => {
       return acc + link.visitHistory.filter(v => v.timestamp >= todayStart.getTime()).length;
     }, 0);
@@ -243,7 +267,7 @@ export async function handleGetStats(req, res) {
       activeLinks,
       totalClicks,
       clicksLastWeek,
-      clicksChange: calcChange(totalClicks, clicksLastWeek),
+      clicksChange: calcChange(clicksThisWeek, clicksLastWeek),
       todaysClicks,
       yesterdaysClicks,
       todayClickChange: calcChange(todaysClicks, yesterdaysClicks),
@@ -337,15 +361,15 @@ export async function handleGetUrlAnalytics(req, res) {
 
 export async function handleGetAnalytics(req, res) {
   try {
-    const { period } = req.query
+    const period = Math.max(parseInt(req.query.period || "7", 10) || 7, 1)
     const user = req.userInfo
-    const userId = new mongoose.Types.ObjectId(String(user._id));
     if (!user) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
       });
     }
+    const userId = new mongoose.Types.ObjectId(String(user._id));
 
     const urls = await URL.find({ createdBy: user._id })
 

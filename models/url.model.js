@@ -12,6 +12,10 @@ const urlSchema = new mongoose.Schema({
     required: true,
     trim : true
   },
+  qrCodeDataUrl: {
+    type: String,
+    default: null,
+  },
   visitHistory: [{ 
     timestamp: { type: Number },
     ip : { type : String},
