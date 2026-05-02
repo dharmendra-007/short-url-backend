@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/v1/cron/daily-stats",
-      "schedule": "0 22 * * *"
+      "schedule": "30 04 * * *"
     }
   ],
   "builds": [
