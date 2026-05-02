@@ -50,6 +50,45 @@ async function issueVerificationOtp(user) {
   await sendVerificationEmail(user, otp)
 }
 
+async function verifyGoogleIdToken(idToken) {
+  const tokenInfoResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`)
+  const tokenInfo = await tokenInfoResponse.json()
+
+  if (!tokenInfoResponse.ok || tokenInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
+    return null
+  }
+
+  return tokenInfo
+}
+
+async function exchangeGoogleAuthCode(code, redirectUri) {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    throw new Error("Google OAuth client configuration is missing")
+  }
+
+  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      code,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: redirectUri || process.env.FRONTEND_URL || "http://localhost:3000",
+      grant_type: "authorization_code",
+    }).toString(),
+  })
+
+  const tokenData = await tokenResponse.json()
+
+  if (!tokenResponse.ok || !tokenData.id_token) {
+    throw new Error(tokenData.error_description || tokenData.error || "Unable to exchange Google authorization code")
+  }
+
+  return tokenData.id_token
+}
+
 export async function handleUserSignUp(req, res) {
   try {
     const { name, email, password } = req.body
@@ -421,18 +460,26 @@ function cryptoRandomToken(bytes = 32) {
 
 export async function handleGoogleAuth(req, res) {
   try {
-    const { credential } = req.body
-    if (!credential) {
+    const { credential, code, redirectUri } = req.body
+    const resolvedRedirectUri = req.get("origin") || redirectUri || process.env.FRONTEND_URL || "http://localhost:3000"
+
+    if (!credential && !code) {
       return res.status(400).json({
         success: false,
-        message: "Google credential is required",
+        message: "Google credential or authorization code is required",
       })
     }
 
-    const tokenInfoResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`)
-    const tokenInfo = await tokenInfoResponse.json()
+    let tokenInfo = null
 
-    if (!tokenInfoResponse.ok || tokenInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
+    if (credential) {
+      tokenInfo = await verifyGoogleIdToken(credential)
+    } else if (code) {
+      const idToken = await exchangeGoogleAuthCode(code, resolvedRedirectUri)
+      tokenInfo = await verifyGoogleIdToken(idToken)
+    }
+
+    if (!tokenInfo) {
       return res.status(400).json({
         success: false,
         message: "Invalid Google credential",
