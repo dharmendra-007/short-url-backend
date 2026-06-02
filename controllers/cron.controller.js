@@ -83,13 +83,27 @@ async function withConcurrency(items, limit, worker) {
 
 export async function handleSendDailyStats(req, res) {
   try {
-    const cronHeader = req.headers["x-vercel-cron"]
-    if (!cronHeader && process.env.NODE_ENV === "production") {
+    const userAgent = String(req.headers["user-agent"] || "")
+    const authHeader = String(req.headers.authorization || "")
+    const cronSecret = process.env.CRON_SECRET?.trim()
+    const isVercelCron = userAgent.includes("vercel-cron/1.0")
+    const isAuthenticatedCron = cronSecret ? authHeader === `Bearer ${cronSecret}` : isVercelCron
+
+    if (process.env.NODE_ENV === "production" && !isAuthenticatedCron) {
+      console.warn("blocked cron request", {
+        userAgent,
+        hasAuthHeader: Boolean(authHeader),
+      })
       return res.status(403).json({
         success: false,
         message: "Forbidden",
       })
     }
+
+    console.log("daily stats cron invoked", {
+      userAgent,
+      authenticated: isAuthenticatedCron,
+    })
 
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)

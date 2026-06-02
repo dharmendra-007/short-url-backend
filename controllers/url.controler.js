@@ -6,6 +6,7 @@ import { UAParser } from 'ua-parser-js';
 import mongoose from 'mongoose';
 import { generateDateRange } from '../helper/generateDateRange.js';
 import QRCode from 'qrcode';
+import { deleteCachedShortUrl, getCachedShortUrl, setCachedShortUrl } from '../services/redisCache.service.js';
 
 const INDIA_TIME_ZONE = "Asia/Kolkata";
 
@@ -49,6 +50,11 @@ export async function handleGenerateNewShortURL(req, res) {
       qrCodeDataUrl,
     })
 
+    await setCachedShortUrl(newUrl.shortId, {
+      redirectUrl: newUrl.redirectUrl,
+      isActive: newUrl.isActive,
+    })
+
     return res.status(201).json({
       success: true,
       id: newUrl.shortId,
@@ -73,7 +79,17 @@ export async function handleRedirect(req, res) {
     const parser = new UAParser(req.headers['user-agent']);
     const deviceType = parser.getDevice().type || "desktop";
 
-    const entry = await URL.findOneAndUpdate(
+    const cachedEntry = await getCachedShortUrl(shortId)
+    let redirectUrl = cachedEntry?.redirectUrl || null
+
+    if (cachedEntry && cachedEntry.isActive === false) {
+      return res.status(400).json({
+        success: false,
+        message: "short url does not exist!"
+      })
+    }
+
+    const updateResult = await URL.updateOne(
       {
         shortId,
         isActive: true
@@ -87,18 +103,35 @@ export async function handleRedirect(req, res) {
             source: getSource(referrer)
           }
         }
-      },
-      { new: true }
+      }
     )
 
-    if (!entry) {
+    if (updateResult.matchedCount === 0) {
+      await deleteCachedShortUrl(shortId)
       return res.status(400).json({
         success: false,
         message: "short url does not exist!"
       })
     }
 
-    res.redirect(entry.redirectUrl)
+    if (!redirectUrl) {
+      const entry = await URL.findOne({ shortId, isActive: true }).select("redirectUrl isActive shortId")
+      if (!entry) {
+        await deleteCachedShortUrl(shortId)
+        return res.status(400).json({
+          success: false,
+          message: "short url does not exist!"
+        })
+      }
+
+      redirectUrl = entry.redirectUrl
+      await setCachedShortUrl(entry.shortId, {
+        redirectUrl: entry.redirectUrl,
+        isActive: entry.isActive,
+      })
+    }
+
+    res.redirect(redirectUrl)
   } catch (error) {
     console.error("Redirect error:", error);
     res.status(500).json({
@@ -295,6 +328,8 @@ export async function handleDeleteUrl(req, res) {
       });
     }
 
+    await deleteCachedShortUrl(deletedUrl.shortId)
+
     res.status(200).json({
       success: true,
       message: "url deleted successfully!"
@@ -321,6 +356,7 @@ export async function handleChangeStatus(req, res) {
 
     url.isActive = !url.isActive
     await url.save()
+    await deleteCachedShortUrl(url.shortId)
 
     res.status(200).json({
       success: true,
