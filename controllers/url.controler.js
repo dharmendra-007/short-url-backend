@@ -11,7 +11,7 @@ import { deleteCachedShortUrl, getCachedShortUrl, setCachedShortUrl } from '../s
 const INDIA_TIME_ZONE = "Asia/Kolkata";
 
 function formatShortUrl(shortId) {
-  const baseUrl = process.env.PUBLIC_SHORT_URL || process.env.FRONTEND_URL || process.env.SHORT_URL_BASE || "http://localhost:3000"
+  const baseUrl = process.env.PUBLIC_SHORT_URL || "http://localhost:8000"
   return `${baseUrl.replace(/\/$/, "")}/${shortId}`
 }
 
