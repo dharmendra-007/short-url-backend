@@ -12,7 +12,7 @@ import { restrictToLogedinUserOnly, restrictToVerifiedUser } from '../middleware
 const router = express.Router();
 
 //post routes
-router.post("/", restrictToVerifiedUser, handleGenerateNewShortURL)
+router.post("/", handleGenerateNewShortURL)
 
 //get routes
 router.get('/getuserurl' ,restrictToVerifiedUser, handleGetUserUrl)
